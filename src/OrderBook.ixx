@@ -5,6 +5,7 @@ module;
 #include <iostream>
 #include <type_traits>
 #include <ranges>
+#include <mutex>
 
 export module OrderBook;
 
@@ -18,9 +19,13 @@ private:
     std::vector<std::unique_ptr<Order>> bids;
     std::vector<std::unique_ptr<Order>> asks;
 
+    mutable std::mutex bookMutex;
+
 public:
     template <IsOrder T>
     void addOrder(std::unique_ptr<T> order) {
+        std::lock_guard<std::mutex> lock(bookMutex);
+
         if (order->getSide() == OrderSide::Buy) {
             bids.push_back(std::move(order));
         }
@@ -30,6 +35,8 @@ public:
     }
 
     void displayBook() const {
+        std::lock_guard<std::mutex> lock(bookMutex);
+        
         std::cout << "\n=== ORDER BOOK ===\n";
 
         std::cout << "--- ASKS (Sell) ---\n";
@@ -45,6 +52,8 @@ public:
     }
 
     void displayWhaleOrders(double minQuantity) const {
+        std::lock_guard<std::mutex> lock(bookMutex);
+        
         std::cout << "\n[RADAR] Whale Detection (Volume > " << minQuantity << ")...\n";
 
         auto whaleFilter = std::views::filter([minQuantity](const auto& order) {

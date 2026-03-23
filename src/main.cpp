@@ -3,21 +3,19 @@
 #include <memory>
 
 import Order;
+import OrderBook;
 
 int main() {
     std::cout << "System initialized. Starting Exchange Simulator...\n";
 
-    std::vector<std::unique_ptr<Order>> activeOrders;
+    OrderBook orderBook;
 
-    activeOrders.push_back(std::make_unique<LimitOrder>(1, OrderSide::Buy, 10.0, 150.50));
-    activeOrders.push_back(std::make_unique<LimitOrder>(2, OrderSide::Sell, 5.0, 151.00));
-    activeOrders.push_back(std::make_unique<MarketOrder>(3, OrderSide::Buy, 20.0));
+    orderBook.addOrder(std::make_unique<LimitOrder>(1, OrderSide::Buy, 10.0, 150.50));
+    orderBook.addOrder(std::make_unique<LimitOrder>(2, OrderSide::Sell, 5.0, 151.00));
+    orderBook.addOrder(std::make_unique<MarketOrder>(3, OrderSide::Buy, 20.0));
+    orderBook.addOrder(std::make_unique<LimitOrder>(4, OrderSide::Sell, 15.0, 152.00));
 
-    std::cout << "--- Active Orders ---\n";
-
-    for (const auto& order : activeOrders) {
-        std::cout << order->getOrderInfo() << "\n";
-    }
+    orderBook.displayBook();
 
     return 0;
 }

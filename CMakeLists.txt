@@ -5,10 +5,11 @@ project(ExchangeSimulator CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(ExchangeSimulator src/main.cpp "src/Order.ixx")
+add_executable(ExchangeSimulator src/main.cpp "src/Order.ixx" "src/OrderBook.ixx")
 
 target_sources(ExchangeSimulator
     PUBLIC
         FILE_SET CXX_MODULES FILES
         src/Order.ixx
+        src/OrderBook.ixx
 )

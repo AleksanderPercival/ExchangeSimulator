@@ -1,27 +1,57 @@
 module;
 
+#include <string>
 #include <cstdint>
 
 export module Order;
 
-export enum class OrderType {
-	Buy,
-	Sell
-};
+export enum class OrderSide {Buy,Sell};
 
 export class Order {
-private:
+protected:
 	uint64_t id;
-	OrderType type;
-	double price;
+	OrderSide side;
 	double quantity;
 
 public:
-	Order(uint64_t id, OrderType type, double price, double quantity)
-		: id(id), type(type), price(price), quantity(quantity) {}
+	Order(uint64_t id, OrderSide side, double quantity)
+		: id(id), side(side), quantity(quantity) {
+	}
+
+	virtual ~Order() = default;
+
+	virtual std::string getOrderInfo() const = 0;
 
 	uint64_t getId() const { return id; }
-	OrderType getType() const { return type; }
-	double getPrice() const { return price; }
+	OrderSide getSide() const { return side; }
 	double getQuantity() const { return quantity; }
+};
+
+export class LimitOrder : public Order {
+private:
+	double limitPrice;
+
+public:
+	LimitOrder(uint64_t id, OrderSide side, double quantity, double limitPrice)
+		: Order(id, side, quantity), limitPrice(limitPrice) {
+	}
+
+	double getLimitPrice() const { return limitPrice; }
+
+	std::string getOrderInfo() const override {
+		return "Limit Order  [ID: " + std::to_string(id) + "] - Qty: " +
+			std::to_string(quantity) + " @ Price: " + std::to_string(limitPrice);
+	}
+};
+
+export class MarketOrder : public Order {
+public:
+	MarketOrder(uint64_t id, OrderSide side, double quantity)
+		: Order(id, side, quantity) {
+	}
+
+	std::string getOrderInfo() const override {
+		return "Market Order [ID: " + std::to_string(id) + "] - Qty: " +
+			std::to_string(quantity) + " @ Price: ANY (Market Price)";
+	}
 };

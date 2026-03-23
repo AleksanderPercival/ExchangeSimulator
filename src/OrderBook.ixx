@@ -4,6 +4,7 @@ module;
 #include <memory>
 #include <iostream>
 #include <type_traits>
+#include <ranges>
 
 export module OrderBook;
 
@@ -41,5 +42,21 @@ public:
             std::cout << bid->getOrderInfo() << "\n";
         }
         std::cout << "==================\n\n";
+    }
+
+    void displayWhaleOrders(double minQuantity) const {
+        std::cout << "\n[RADAR] Whale Detection (Volume > " << minQuantity << ")...\n";
+
+        auto whaleFilter = std::views::filter([minQuantity](const auto& order) {
+            return order->getQuantity() > minQuantity;
+            });
+
+        for (const auto& ask : asks | whaleFilter) {
+            std::cout << "[ALERT] High supply: " << ask->getOrderInfo() << "\n";
+        }
+
+        for (const auto& bid : bids | whaleFilter) {
+            std::cout << "[ALERT] High demand: " << bid->getOrderInfo() << "\n";
+        }
     }
 };

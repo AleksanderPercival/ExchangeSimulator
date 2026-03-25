@@ -7,6 +7,7 @@
 import Order;
 import OrderBook;
 import RiskManager;
+import DataTerminal;
 
 void simulateClient(OrderBook& book, uint64_t startId, OrderSide side, int numOrders) {
     for (int i = 0; i < numOrders; ++i) {
@@ -17,6 +18,17 @@ void simulateClient(OrderBook& book, uint64_t startId, OrderSide side, int numOr
 int main() {
     std::cout << "System initialized. Starting Exchange Simulator...\n";
 
+    std::cout << "[SYSTEM] Initialized. Booting subsystems...\n\n";
+
+    DataTerminal terminal;
+    terminal.initializeStorage();
+
+    std::cout << "\n[SYSTEM] Testing Admin Commands via Regex...\n";
+    terminal.executeAdminCommand("CANCEL 99999");
+    terminal.executeAdminCommand("CANCLE123");
+    terminal.executeAdminCommand("CANCEL ORDER_A");
+    std::cout << "\n";
+    
     OrderBook orderBook;
     RiskManager riskManager;
 

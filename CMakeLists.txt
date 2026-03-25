@@ -13,4 +13,5 @@ target_sources(ExchangeSimulator
         src/Order.ixx
         src/OrderBook.ixx
         src/RiskManager.ixx
+        src/DataTerminal.ixx
 )

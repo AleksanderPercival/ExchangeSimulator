@@ -68,4 +68,22 @@ public:
             std::cout << "[ALERT] High demand: " << bid->getOrderInfo() << "\n";
         }
     }
+
+    std::vector<std::string> getAsksSnapshot() const {
+        std::lock_guard<std::mutex> lock(bookMutex);
+        std::vector<std::string> snapshot;
+        for (const auto& ask : asks) {
+            snapshot.push_back(ask->getOrderInfo());
+        }
+        return snapshot;
+    }
+
+    std::vector<std::string> getBidsSnapshot() const {
+        std::lock_guard<std::mutex> lock(bookMutex);
+        std::vector<std::string> snapshot;
+        for (const auto& bid : bids) {
+            snapshot.push_back(bid->getOrderInfo());
+        }
+        return snapshot;
+    }
 };

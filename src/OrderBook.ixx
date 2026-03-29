@@ -6,9 +6,9 @@ module;
 #include <type_traits>
 #include <ranges>
 #include <mutex>
+#include <algorithm>
 
 export module OrderBook;
-
 import Order;
 
 export template <typename T>
@@ -18,8 +18,40 @@ export class OrderBook {
 private:
     std::vector<std::unique_ptr<Order>> bids;
     std::vector<std::unique_ptr<Order>> asks;
-
     mutable std::mutex bookMutex;
+
+    void matchOrders() {
+        std::sort(bids.begin(), bids.end(), [](const auto& a, const auto& b) {
+            return a->getPrice() > b->getPrice();
+            });
+
+        std::sort(asks.begin(), asks.end(), [](const auto& a, const auto& b) {
+            return a->getPrice() < b->getPrice();
+            });
+
+        while (!bids.empty() && !asks.empty()) {
+            auto& bestBid = bids.front();
+            auto& bestAsk = asks.front();
+
+            if (bestBid->getPrice() >= bestAsk->getPrice()) {
+                double tradeQty = std::min(bestBid->getQuantity(), bestAsk->getQuantity());
+
+                double tradePrice = bestAsk->getPrice();
+
+                std::cout << "[MATCHING ENGINE] TRADE EXECUTED: "
+                    << tradeQty << " units @ $" << tradePrice << "\n";
+
+                bestBid->reduceQuantity(tradeQty);
+                bestAsk->reduceQuantity(tradeQty);
+
+                if (bestBid->getQuantity() <= 0.001) bids.erase(bids.begin());
+                if (bestAsk->getQuantity() <= 0.001) asks.erase(asks.begin());
+            }
+            else {
+                break;
+            }
+        }
+    }
 
 public:
     template <IsOrder T>
@@ -32,58 +64,21 @@ public:
         else {
             asks.push_back(std::move(order));
         }
-    }
 
-    void displayBook() const {
-        std::lock_guard<std::mutex> lock(bookMutex);
-        
-        std::cout << "\n=== ORDER BOOK ===\n";
-
-        std::cout << "--- ASKS (Sell) ---\n";
-        for (const auto& ask : asks) {
-            std::cout << ask->getOrderInfo() << "\n";
-        }
-
-        std::cout << "--- BIDS (Buy) ---\n";
-        for (const auto& bid : bids) {
-            std::cout << bid->getOrderInfo() << "\n";
-        }
-        std::cout << "==================\n\n";
-    }
-
-    void displayWhaleOrders(double minQuantity) const {
-        std::lock_guard<std::mutex> lock(bookMutex);
-        
-        std::cout << "\n[RADAR] Whale Detection (Volume > " << minQuantity << ")...\n";
-
-        auto whaleFilter = std::views::filter([minQuantity](const auto& order) {
-            return order->getQuantity() > minQuantity;
-            });
-
-        for (const auto& ask : asks | whaleFilter) {
-            std::cout << "[ALERT] High supply: " << ask->getOrderInfo() << "\n";
-        }
-
-        for (const auto& bid : bids | whaleFilter) {
-            std::cout << "[ALERT] High demand: " << bid->getOrderInfo() << "\n";
-        }
+        matchOrders();
     }
 
     std::vector<std::string> getAsksSnapshot() const {
         std::lock_guard<std::mutex> lock(bookMutex);
         std::vector<std::string> snapshot;
-        for (const auto& ask : asks) {
-            snapshot.push_back(ask->getOrderInfo());
-        }
+        for (const auto& ask : asks) { snapshot.push_back(ask->getOrderInfo()); }
         return snapshot;
     }
 
     std::vector<std::string> getBidsSnapshot() const {
         std::lock_guard<std::mutex> lock(bookMutex);
         std::vector<std::string> snapshot;
-        for (const auto& bid : bids) {
-            snapshot.push_back(bid->getOrderInfo());
-        }
+        for (const auto& bid : bids) { snapshot.push_back(bid->getOrderInfo()); }
         return snapshot;
     }
 };

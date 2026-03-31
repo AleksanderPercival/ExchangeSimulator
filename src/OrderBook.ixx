@@ -7,6 +7,7 @@ module;
 #include <ranges>
 #include <mutex>
 #include <algorithm>
+#include <string>
 
 export module OrderBook;
 import Order;
@@ -18,6 +19,9 @@ export class OrderBook {
 private:
     std::vector<std::unique_ptr<Order>> bids;
     std::vector<std::unique_ptr<Order>> asks;
+
+    std::vector<std::string> tradeHistory;
+
     mutable std::mutex bookMutex;
 
     void matchOrders() {
@@ -35,11 +39,13 @@ private:
 
             if (bestBid->getPrice() >= bestAsk->getPrice()) {
                 double tradeQty = std::min(bestBid->getQuantity(), bestAsk->getQuantity());
-
                 double tradePrice = bestAsk->getPrice();
 
-                std::cout << "[MATCHING ENGINE] TRADE EXECUTED: "
-                    << tradeQty << " units @ $" << tradePrice << "\n";
+                // NOWOŚĆ: Formatujemy wiadomość o transakcji i zapisujemy do historii
+                std::string tradeMsg = "[TRADE] " + std::to_string(tradeQty) +
+                    " units @ $" + std::to_string(tradePrice);
+                std::cout << "[MATCHING ENGINE] " << tradeMsg << "\n";
+                tradeHistory.push_back(tradeMsg);
 
                 bestBid->reduceQuantity(tradeQty);
                 bestAsk->reduceQuantity(tradeQty);
@@ -57,14 +63,12 @@ public:
     template <IsOrder T>
     void addOrder(std::unique_ptr<T> order) {
         std::lock_guard<std::mutex> lock(bookMutex);
-
         if (order->getSide() == OrderSide::Buy) {
             bids.push_back(std::move(order));
         }
         else {
             asks.push_back(std::move(order));
         }
-
         matchOrders();
     }
 
@@ -80,5 +84,10 @@ public:
         std::vector<std::string> snapshot;
         for (const auto& bid : bids) { snapshot.push_back(bid->getOrderInfo()); }
         return snapshot;
+    }
+
+    std::vector<std::string> getTradeHistorySnapshot() const {
+        std::lock_guard<std::mutex> lock(bookMutex);
+        return tradeHistory;
     }
 };

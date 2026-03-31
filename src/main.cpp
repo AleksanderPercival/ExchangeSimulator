@@ -109,6 +109,20 @@ int main() {
         ImGui::Columns(1);
         ImGui::End();
 
+        ImGui::Begin("Trade History", nullptr, ImGuiWindowFlags_NoCollapse);
+        ImGui::SetWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
+
+        auto history = orderBook.getTradeHistorySnapshot();
+        if (history.empty()) {
+            ImGui::TextDisabled("No trades executed yet...");
+        }
+        else {
+            for (auto it = history.rbegin(); it != history.rend(); ++it) {
+                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "%s", it->c_str());
+            }
+        }
+        ImGui::End();
+
         ImGui::Render();
         int display_w, display_h;
         glfwGetFramebufferSize(window, &display_w, &display_h);

@@ -3,6 +3,7 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "implot.h"
 #include <GLFW/glfw3.h>
 
 import Order;
@@ -31,6 +32,7 @@ int main() {
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
+    ImPlot::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
 
     ImGui::StyleColorsDark();
@@ -40,7 +42,7 @@ int main() {
 
     DataTerminal terminal;
     terminal.initializeStorage();
-    OrderBook orderBook;
+    OrderBook orderBook("BTC/USD");
 
     std::cout << "[SYSTEM] GUI Initialized successfully. Entering Main Loop.\n";
 
@@ -58,7 +60,7 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::Begin("Trading Terminal", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+        ImGui::Begin("Trading Terminal - BTC/USD", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
         ImGui::Combo("Side", &orderSide, "Buy\0Sell\0");
         ImGui::Combo("Type", &orderType, "Limit\0Market\0");
@@ -84,7 +86,7 @@ int main() {
         }
         ImGui::End();
 
-        ImGui::Begin("Live Order Book", nullptr, ImGuiWindowFlags_NoCollapse);
+        ImGui::Begin("Live Order Book - BTC/USD", nullptr, ImGuiWindowFlags_NoCollapse);
         ImGui::SetWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
 
         ImGui::Columns(2, "orderBookColumns");
@@ -123,6 +125,43 @@ int main() {
         }
         ImGui::End();
 
+        ImGui::Begin("Market Chart - BTC/USD");
+
+        auto chartData = orderBook.getChartDataSnapshot();
+
+        if (ImPlot::BeginPlot("Price Action", ImVec2(-1, 300))) {
+            ImPlot::SetupAxes("Time (Candles)", "Price (USD)", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
+
+            for (int i = 0; i < chartData.size(); ++i) {
+                ImGui::PushID(i);
+
+                const auto& c = chartData[i];
+                double x = i;
+                bool isBull = c.close >= c.open; 
+
+                ImVec4 color = isBull ? ImVec4(0.2f, 1.0f, 0.2f, 1.0f) : ImVec4(1.0f, 0.2f, 0.2f, 1.0f);
+
+                double wick_x[2] = { x, x };
+                double wick_y[2] = { c.low, c.high };
+                ImPlot::SetNextLineStyle(color, 1.0f);
+                ImPlot::PlotLine("##Wick", wick_x, wick_y, 2);
+
+                double body_x[2] = { x, x };
+                double body_y[2] = { c.open, c.close };
+
+                if (c.open == c.close) {
+                    body_x[0] -= 0.2; body_x[1] += 0.2;
+                }
+
+                ImPlot::SetNextLineStyle(color, 6.0f);
+                ImPlot::PlotLine("##Body", body_x, body_y, 2);
+
+                ImGui::PopID();
+            }
+            ImPlot::EndPlot();
+        }
+        ImGui::End();
+
         ImGui::Render();
         int display_w, display_h;
         glfwGetFramebufferSize(window, &display_w, &display_h);
@@ -136,6 +175,7 @@ int main() {
     std::cout << "[SYSTEM] Shutting down GUI...\n";
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
+    ImPlot::DestroyContext();
     ImGui::DestroyContext();
     glfwDestroyWindow(window);
     glfwTerminate();

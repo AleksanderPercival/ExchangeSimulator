@@ -26,6 +26,12 @@ if(NOT imgui_POPULATED)
     FetchContent_Populate(imgui)
 endif()
 
+FetchContent_Declare(implot
+    GIT_REPOSITORY https://github.com/epezent/implot.git
+    GIT_TAG v0.16
+)
+FetchContent_MakeAvailable(implot)
+
 find_package(OpenGL REQUIRED)
 
 add_executable(ExchangeSimulator src/main.cpp "src/Order.ixx" "src/OrderBook.ixx" "src/RiskManager.ixx")
@@ -37,6 +43,7 @@ target_sources(ExchangeSimulator
         src/OrderBook.ixx
         src/RiskManager.ixx
         src/DataTerminal.ixx
+        src/MarketData.ixx
 )
 
 target_sources(ExchangeSimulator
@@ -47,11 +54,14 @@ target_sources(ExchangeSimulator
         ${imgui_SOURCE_DIR}/imgui_widgets.cpp
         ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
         ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+        ${implot_SOURCE_DIR}/implot.cpp
+        ${implot_SOURCE_DIR}/implot_items.cpp
 )
 
 target_include_directories(ExchangeSimulator PRIVATE
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
+    ${implot_SOURCE_DIR}
 )
 
 target_link_libraries(ExchangeSimulator PRIVATE glfw OpenGL::GL)

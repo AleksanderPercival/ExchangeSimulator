@@ -11,16 +11,22 @@ module;
 
 export module OrderBook;
 import Order;
+import MarketData;
 
 export template <typename T>
 concept IsOrder = std::is_base_of_v<Order, T>;
 
 export class OrderBook {
 private:
+    std::string symbol;
+
     std::vector<std::unique_ptr<Order>> bids;
     std::vector<std::unique_ptr<Order>> asks;
-
     std::vector<std::string> tradeHistory;
+
+
+    std::vector<Candle> chartData;
+    int tradesInCurrentCandle = 0;
 
     mutable std::mutex bookMutex;
 
@@ -41,11 +47,19 @@ private:
                 double tradeQty = std::min(bestBid->getQuantity(), bestAsk->getQuantity());
                 double tradePrice = bestAsk->getPrice();
 
-                // NOWOŚĆ: Formatujemy wiadomość o transakcji i zapisujemy do historii
-                std::string tradeMsg = "[TRADE] " + std::to_string(tradeQty) +
+                std::string tradeMsg = "[TRADE] " + symbol + " - " + std::to_string(tradeQty) +
                     " units @ $" + std::to_string(tradePrice);
                 std::cout << "[MATCHING ENGINE] " << tradeMsg << "\n";
                 tradeHistory.push_back(tradeMsg);
+
+                if (chartData.empty() || tradesInCurrentCandle >= 3) {
+                    chartData.emplace_back(tradePrice, tradeQty);
+                    tradesInCurrentCandle = 1;
+                }
+                else {
+                    chartData.back().update(tradePrice, tradeQty);
+                    tradesInCurrentCandle++;
+                }
 
                 bestBid->reduceQuantity(tradeQty);
                 bestAsk->reduceQuantity(tradeQty);
@@ -60,6 +74,10 @@ private:
     }
 
 public:
+    OrderBook(std::string tickerSymbol) : symbol(std::move(tickerSymbol)) {}
+
+    std::string getSymbol() const { return symbol; }
+
     template <IsOrder T>
     void addOrder(std::unique_ptr<T> order) {
         std::lock_guard<std::mutex> lock(bookMutex);
@@ -89,5 +107,10 @@ public:
     std::vector<std::string> getTradeHistorySnapshot() const {
         std::lock_guard<std::mutex> lock(bookMutex);
         return tradeHistory;
+    }
+
+    std::vector<Candle> getChartDataSnapshot() const {
+        std::lock_guard<std::mutex> lock(bookMutex);
+        return chartData;
     }
 };

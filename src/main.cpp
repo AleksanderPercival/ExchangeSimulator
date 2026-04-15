@@ -1,4 +1,5 @@
 #include <iostream>
+#include <chrono>
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -7,6 +8,7 @@
 #include <GLFW/glfw3.h>
 
 import Order;
+import Asset;
 import OrderBook;
 import RiskManager;
 import DataTerminal;
@@ -42,7 +44,8 @@ int main() {
 
     DataTerminal terminal;
     terminal.initializeStorage();
-    OrderBook orderBook("BTC/USD");
+    Asset btcAsset{ "BTC/USD", 1, 100 };
+    OrderBook orderBook(btcAsset);
 
     std::cout << "[SYSTEM] GUI Initialized successfully. Entering Main Loop.\n";
 
@@ -60,6 +63,7 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        // 1. CONTROL PANEL
         ImGui::Begin("Trading Terminal - BTC/USD", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
 
         ImGui::Combo("Side", &orderSide, "Buy\0Sell\0");
@@ -74,92 +78,40 @@ int main() {
         ImGui::Separator();
 
         if (ImGui::Button("Submit Order", ImVec2(150, 40))) {
-            OrderSide side = (orderSide == 0) ? OrderSide::Buy : OrderSide::Sell;
+            Side side = (orderSide == 0) ? Side::Buy : Side::Sell;
 
-            if (orderType == 0) {
-                orderBook.addOrder(std::make_unique<LimitOrder>(nextOrderId++, side, quantity, price));
-            }
-            else {
-                orderBook.addOrder(std::make_unique<MarketOrder>(nextOrderId++, side, quantity));
-            }
-            std::cout << "[GUI] Order submitted to core.\n";
+            uint32_t enginePrice = static_cast<uint32_t>(price * 100);
+            uint32_t engineQty = static_cast<uint32_t>(quantity);
+
+            auto now = std::chrono::high_resolution_clock::now();
+            uint64_t timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
+
+            Order newOrder{ nextOrderId++, side, enginePrice, engineQty, timestamp };
+            orderBook.addOrder(newOrder);
+
+            std::cout << "[GUI] Order submitted to core: "
+                << (side == Side::Buy ? "BUY " : "SELL ")
+                << engineQty << " units @ price level " << enginePrice << "\n";
         }
         ImGui::End();
 
+        // 2. LIVE ORDER BOOK (Placeholder)
         ImGui::Begin("Live Order Book - BTC/USD", nullptr, ImGuiWindowFlags_NoCollapse);
         ImGui::SetWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
-
-        ImGui::Columns(2, "orderBookColumns");
-        ImGui::Separator();
-        ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f), "BIDS (Buy)");
-        ImGui::NextColumn();
-        ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "ASKS (Sell)");
-        ImGui::NextColumn();
-        ImGui::Separator();
-
-        auto bids = orderBook.getBidsSnapshot();
-        for (const auto& b : bids) {
-            ImGui::TextUnformatted(b.c_str());
-        }
-        ImGui::NextColumn();
-
-        auto asks = orderBook.getAsksSnapshot();
-        for (const auto& a : asks) {
-            ImGui::TextUnformatted(a.c_str());
-        }
-
-        ImGui::Columns(1);
+        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "[SYSTEM ALERT]");
+        ImGui::TextDisabled("Order Book visualization temporarily offline.");
+        ImGui::TextDisabled("Core Matching Engine is undergoing upgrades.");
         ImGui::End();
 
+        // 3. TRADE HISTORY (Placeholder)
         ImGui::Begin("Trade History", nullptr, ImGuiWindowFlags_NoCollapse);
         ImGui::SetWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
-
-        auto history = orderBook.getTradeHistorySnapshot();
-        if (history.empty()) {
-            ImGui::TextDisabled("No trades executed yet...");
-        }
-        else {
-            for (auto it = history.rbegin(); it != history.rend(); ++it) {
-                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "%s", it->c_str());
-            }
-        }
+        ImGui::TextDisabled("Awaiting Matching Engine installation...");
         ImGui::End();
 
+        // 4. MARKET CHART (Placeholder)
         ImGui::Begin("Market Chart - BTC/USD");
-
-        auto chartData = orderBook.getChartDataSnapshot();
-
-        if (ImPlot::BeginPlot("Price Action", ImVec2(-1, 300))) {
-            ImPlot::SetupAxes("Time (Candles)", "Price (USD)", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
-
-            for (int i = 0; i < chartData.size(); ++i) {
-                ImGui::PushID(i);
-
-                const auto& c = chartData[i];
-                double x = i;
-                bool isBull = c.close >= c.open; 
-
-                ImVec4 color = isBull ? ImVec4(0.2f, 1.0f, 0.2f, 1.0f) : ImVec4(1.0f, 0.2f, 0.2f, 1.0f);
-
-                double wick_x[2] = { x, x };
-                double wick_y[2] = { c.low, c.high };
-                ImPlot::SetNextLineStyle(color, 1.0f);
-                ImPlot::PlotLine("##Wick", wick_x, wick_y, 2);
-
-                double body_x[2] = { x, x };
-                double body_y[2] = { c.open, c.close };
-
-                if (c.open == c.close) {
-                    body_x[0] -= 0.2; body_x[1] += 0.2;
-                }
-
-                ImPlot::SetNextLineStyle(color, 6.0f);
-                ImPlot::PlotLine("##Body", body_x, body_y, 2);
-
-                ImGui::PopID();
-            }
-            ImPlot::EndPlot();
-        }
+        ImGui::TextDisabled("Chart data feed disconnected.");
         ImGui::End();
 
         ImGui::Render();

@@ -34,7 +34,7 @@ FetchContent_MakeAvailable(implot)
 
 find_package(OpenGL REQUIRED)
 
-add_executable(ExchangeSimulator src/main.cpp "src/Order.ixx" "src/OrderBook.ixx" "src/RiskManager.ixx")
+add_executable(ExchangeSimulator src/main.cpp "src/Order.ixx" "src/OrderBook.ixx" "src/RiskManager.ixx"  "src/Asset.ixx")
 
 target_sources(ExchangeSimulator
     PUBLIC
@@ -44,6 +44,7 @@ target_sources(ExchangeSimulator
         src/RiskManager.ixx
         src/DataTerminal.ixx
         src/MarketData.ixx
+        src/Asset.ixx
 )
 
 target_sources(ExchangeSimulator

@@ -95,12 +95,30 @@ int main() {
         }
         ImGui::End();
 
-        // 2. LIVE ORDER BOOK (Placeholder)
+        // 2. LIVE ORDER BOOK (Active)
         ImGui::Begin("Live Order Book - BTC/USD", nullptr, ImGuiWindowFlags_NoCollapse);
         ImGui::SetWindowSize(ImVec2(600, 400), ImGuiCond_FirstUseEver);
-        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "[SYSTEM ALERT]");
-        ImGui::TextDisabled("Order Book visualization temporarily offline.");
-        ImGui::TextDisabled("Core Matching Engine is undergoing upgrades.");
+
+        ImGui::Columns(2, "orderBookColumns");
+        ImGui::Separator();
+        ImGui::TextColored(ImVec4(0.2f, 1.0f, 0.2f, 1.0f), "BIDS (Buy)");
+        ImGui::NextColumn();
+        ImGui::TextColored(ImVec4(1.0f, 0.2f, 0.2f, 1.0f), "ASKS (Sell)");
+        ImGui::NextColumn();
+        ImGui::Separator();
+
+        auto bids = orderBook.getBidsSnapshot();
+        for (const auto& b : bids) {
+            ImGui::TextUnformatted(b.c_str());
+        }
+        ImGui::NextColumn();
+
+        auto asks = orderBook.getAsksSnapshot();
+        for (const auto& a : asks) {
+            ImGui::TextUnformatted(a.c_str());
+        }
+
+        ImGui::Columns(1);
         ImGui::End();
 
         // 3. TRADE HISTORY (Placeholder)

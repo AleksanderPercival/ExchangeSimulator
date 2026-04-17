@@ -23,6 +23,55 @@ private:
     std::vector<PriceLevel> bids;
     std::vector<PriceLevel> asks;
 
+    void executeMarketOrder(Order& order) {
+        if (order.side == Side::Buy) {
+            while (order.quantity > 0 && !asks.empty()) {
+                auto& bestAskLevel = asks.front();
+                auto& askOrder = bestAskLevel.orders.front();
+
+                uint32_t tradeQty = std::min(order.quantity, askOrder.quantity);
+                std::cout << "[MATCHING ENGINE] MARKET BUY SWEEP: "
+                    << tradeQty << " units @ price " << bestAskLevel.price << "\n";
+
+                order.quantity -= tradeQty;
+                askOrder.quantity -= tradeQty;
+
+                if (askOrder.quantity == 0) {
+                    bestAskLevel.orders.erase(bestAskLevel.orders.begin());
+                }
+                if (bestAskLevel.orders.empty()) {
+                    asks.erase(asks.begin());
+                }
+            }
+            if (order.quantity > 0) {
+                std::cout << "[MATCHING ENGINE] MARKET BUY PARTIALLY UNFILLED. Dropping remaining " << order.quantity << " units.\n";
+            }
+        }
+        else {
+            while (order.quantity > 0 && !bids.empty()) {
+                auto& bestBidLevel = bids.front();
+                auto& bidOrder = bestBidLevel.orders.front();
+
+                uint32_t tradeQty = std::min(order.quantity, bidOrder.quantity);
+                std::cout << "[MATCHING ENGINE] MARKET SELL SWEEP: "
+                    << tradeQty << " units @ price " << bestBidLevel.price << "\n";
+
+                order.quantity -= tradeQty;
+                bidOrder.quantity -= tradeQty;
+
+                if (bidOrder.quantity == 0) {
+                    bestBidLevel.orders.erase(bestBidLevel.orders.begin());
+                }
+                if (bestBidLevel.orders.empty()) {
+                    bids.erase(bids.begin());
+                }
+            }
+            if (order.quantity > 0) {
+                std::cout << "[MATCHING ENGINE] MARKET SELL PARTIALLY UNFILLED. Dropping remaining " << order.quantity << " units.\n";
+            }
+        }
+    }
+
     void matchOrders() {
 
         while (!bids.empty() && !asks.empty()) {
@@ -65,7 +114,13 @@ public:
 
     const Asset& getAsset() const { return m_asset; }
 
-    void addOrder(const Order& order) {
+    void addOrder(Order order) {
+        
+        if (order.type == Type::Market) {
+            executeMarketOrder(order);
+            return;
+        }
+        
         if (order.side == Side::Buy) {
             auto it = std::lower_bound(bids.begin(), bids.end(), order.price,
                 [](const PriceLevel& level, uint32_t price) {

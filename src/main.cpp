@@ -79,6 +79,7 @@ int main() {
 
         if (ImGui::Button("Submit Order", ImVec2(150, 40))) {
             Side side = (orderSide == 0) ? Side::Buy : Side::Sell;
+            Type type = (orderType == 0) ? Type::Limit : Type::Market;
 
             uint32_t enginePrice = static_cast<uint32_t>(price * 100);
             uint32_t engineQty = static_cast<uint32_t>(quantity);
@@ -86,7 +87,7 @@ int main() {
             auto now = std::chrono::high_resolution_clock::now();
             uint64_t timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
 
-            Order newOrder{ nextOrderId++, side, enginePrice, engineQty, timestamp };
+            Order newOrder{ nextOrderId++, type, side, enginePrice, engineQty, timestamp };
             orderBook.addOrder(newOrder);
 
             std::cout << "[GUI] Order submitted to core: "

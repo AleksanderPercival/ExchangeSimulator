@@ -12,6 +12,7 @@ import Asset;
 import OrderBook;
 import RiskManager;
 import DataTerminal;
+import Exchange;
 
 static void glfw_error_callback(int error, const char* description) {
     std::cerr << "[GLFW ERROR] " << error << ": " << description << '\n';
@@ -44,10 +45,18 @@ int main() {
 
     DataTerminal terminal;
     terminal.initializeStorage();
-    Asset btcAsset{ "BTC/USD", 1, 100 };
-    OrderBook orderBook(btcAsset);
+
+    Exchange exchange;
+    exchange.addAsset({ "BTC/USD", 1, 100 });
+    exchange.addAsset({ "ETH/USD", 1, 10 }); 
+    exchange.addAsset({ "AAPL", 1, 1 });  
 
     std::cout << "[SYSTEM] GUI Initialized successfully. Entering Main Loop.\n";
+
+    std::cout << "[SYSTEM] GUI Initialized successfully. Entering Main Loop.\n";
+
+    const char* marketSymbols[] = { "BTC/USD", "ETH/USD", "AAPL" };
+    static int currentMarketIdx = 0;
 
     static uint64_t nextOrderId = 1000;
     static int orderSide = 0; // 0 = Buy, 1 = Sell
@@ -65,6 +74,9 @@ int main() {
 
         // 1. CONTROL PANEL
         ImGui::Begin("Trading Terminal - BTC/USD", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+
+        ImGui::Combo("Market", &currentMarketIdx, marketSymbols, 3);
+        ImGui::Separator();
 
         ImGui::Combo("Side", &orderSide, "Buy\0Sell\0");
         ImGui::Combo("Type", &orderType, "Limit\0Market\0");
@@ -88,9 +100,11 @@ int main() {
             uint64_t timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
 
             Order newOrder{ nextOrderId++, type, side, enginePrice, engineQty, timestamp };
-            orderBook.addOrder(newOrder);
 
-            std::cout << "[GUI] Order submitted to core: "
+            const char* activeSymbol = marketSymbols[currentMarketIdx];
+            exchange.routeOrder(activeSymbol, newOrder);
+
+            std::cout << "[GUI] Order submitted to" << activeSymbol << "core: "
                 << (side == Side::Buy ? "BUY " : "SELL ")
                 << engineQty << " units @ price level " << enginePrice << "\n";
         }
@@ -108,15 +122,20 @@ int main() {
         ImGui::NextColumn();
         ImGui::Separator();
 
-        auto bids = orderBook.getBidsSnapshot();
-        for (const auto& b : bids) {
-            ImGui::TextUnformatted(b.c_str());
-        }
-        ImGui::NextColumn();
+        const char* activeSymbol = marketSymbols[currentMarketIdx];
+        OrderBook* activeBook = exchange.getOrderBook(activeSymbol);
 
-        auto asks = orderBook.getAsksSnapshot();
-        for (const auto& a : asks) {
-            ImGui::TextUnformatted(a.c_str());
+        if (activeBook) {
+            auto bids = activeBook->getBidsSnapshot();
+            for (const auto& b : bids) { ImGui::TextUnformatted(b.c_str()); }
+            ImGui::NextColumn();
+
+            auto asks = activeBook->getAsksSnapshot();
+            for (const auto& a : asks) { ImGui::TextUnformatted(a.c_str()); }
+        }
+        else {
+            ImGui::TextColored(ImVec4(1, 0, 0, 1), "SYSTEM ERROR: MARKET OFFLINE");
+            ImGui::NextColumn();
         }
 
         ImGui::Columns(1);

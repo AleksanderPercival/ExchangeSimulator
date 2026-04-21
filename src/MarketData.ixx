@@ -1,24 +1,29 @@
 module;
-
-#include <algorithm>
+#include <cstdint>
 
 export module MarketData;
 
-export struct Candle {
-    double open; 
-    double high;
-    double low;
-    double close; 
-    double volume;
+export struct Trade {
+    uint64_t timestamp;
+    uint32_t price;
+    uint32_t quantity;
+};
 
-    Candle(double price, double quantity)
-        : open(price), high(price), low(price), close(price), volume(quantity) {
+export struct Candle {
+    uint32_t open;
+    uint32_t high;
+    uint32_t low;
+    uint32_t close;
+    uint32_t volume;
+
+    Candle(uint32_t price, uint32_t qty)
+        : open(price), high(price), low(price), close(price), volume(qty) {
     }
 
-    void update(double price, double quantity) {
-        high = std::max(high, price);
-        low = std::min(low, price);
+    void update(uint32_t price, uint32_t qty) {
+        if (price > high) high = price;
+        if (price < low) low = price;
         close = price;
-        volume += quantity;
+        volume += qty;
     }
 };

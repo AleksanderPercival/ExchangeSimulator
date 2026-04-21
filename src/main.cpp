@@ -141,17 +141,76 @@ int main() {
         ImGui::Columns(1);
         ImGui::End();
 
-        // 3. TRADE HISTORY (Placeholder)
+        // 3. TRADE HISTORY (Active Report System)
         ImGui::Begin("Trade History", nullptr, ImGuiWindowFlags_NoCollapse);
         ImGui::SetWindowSize(ImVec2(400, 300), ImGuiCond_FirstUseEver);
-        ImGui::TextDisabled("Awaiting Matching Engine installation...");
+
+        if (activeBook) {
+            auto history = activeBook->getTradeHistory();
+            if (history.empty()) {
+                ImGui::TextDisabled("No trades executed yet...");
+            }
+            else {
+                for (auto it = history.rbegin(); it != history.rend(); ++it) {
+                    float displayPrice = it->price / 100.0f;
+                    ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.0f, 1.0f), "[TRADE] %d units @ $%.2f", it->quantity, displayPrice);
+                }
+            }
+        }
+        else {
+            ImGui::TextDisabled("Awaiting Matching Engine installation...");
+        }
         ImGui::End();
 
-        // 4. MARKET CHART (Placeholder)
-        ImGui::Begin("Market Chart - BTC/USD");
-        ImGui::TextDisabled("Chart data feed disconnected.");
+        // 4. MARKET CHART (Active candle drawing system)
+        ImGui::Begin(("Market Chart - " + std::string(activeSymbol)).c_str());
+
+        if (activeBook) {
+            auto chartData = activeBook->getChartData();
+
+            if (ImPlot::BeginPlot("Price Action", ImVec2(-1, 300))) {
+                ImPlot::SetupAxes("Time (Candles)", "Price (USD)", ImPlotAxisFlags_AutoFit, ImPlotAxisFlags_AutoFit);
+
+                for (int i = 0; i < chartData.size(); ++i) {
+                    ImGui::PushID(i);
+
+                    const auto& c = chartData[i];
+                    double x = i; //The X axis is the numbers of subsequent candles
+
+                    float open = c.open / 100.0f;
+                    float high = c.high / 100.0f;
+                    float low = c.low / 100.0f;
+                    float close = c.close / 100.0f;
+
+                    bool isBull = close >= open;
+                    ImVec4 color = isBull ? ImVec4(0.2f, 1.0f, 0.2f, 1.0f) : ImVec4(1.0f, 0.2f, 0.2f, 1.0f);
+
+                    double wick_x[2] = { x, x };
+                    double wick_y[2] = { low, high };
+                    ImPlot::SetNextLineStyle(color, 1.0f);
+                    ImPlot::PlotLine("##Wick", wick_x, wick_y, 2);
+
+                    double body_x[2] = { x, x };
+                    double body_y[2] = { open, close };
+
+                    if (open == close) {
+                        body_x[0] -= 0.2; body_x[1] += 0.2;
+                    }
+
+                    ImPlot::SetNextLineStyle(color, 6.0f);
+                    ImPlot::PlotLine("##Body", body_x, body_y, 2);
+
+                    ImGui::PopID();
+                }
+                ImPlot::EndPlot();
+            }
+        }
+        else {
+            ImGui::TextDisabled("Chart data feed disconnected.");
+        }
         ImGui::End();
 
+        //RENDER
         ImGui::Render();
         int display_w, display_h;
         glfwGetFramebufferSize(window, &display_w, &display_h);

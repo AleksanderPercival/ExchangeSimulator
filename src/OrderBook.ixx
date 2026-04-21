@@ -4,11 +4,13 @@ module;
 #include <vector>
 #include <utility>
 #include <algorithm>
+#include <chrono>
 
 export module OrderBook;
 
 import Asset;
 import Order;
+import MarketData;
 
 export struct PriceLevel {
     uint32_t price;
@@ -23,6 +25,10 @@ private:
     std::vector<PriceLevel> bids;
     std::vector<PriceLevel> asks;
 
+    std::vector<Trade> tradeHistory;
+    std::vector<Candle> chartData;
+    uint32_t tradesInCurrentCandle = 0;
+
     void executeMarketOrder(Order& order) {
         if (order.side == Side::Buy) {
             while (order.quantity > 0 && !asks.empty()) {
@@ -32,6 +38,8 @@ private:
                 uint32_t tradeQty = std::min(order.quantity, askOrder.quantity);
                 std::cout << "[MATCHING ENGINE] MARKET BUY SWEEP: "
                     << tradeQty << " units @ price " << bestAskLevel.price << "\n";
+
+                recordTrade(bestAskLevel.price, tradeQty);
 
                 order.quantity -= tradeQty;
                 askOrder.quantity -= tradeQty;
@@ -55,6 +63,8 @@ private:
                 uint32_t tradeQty = std::min(order.quantity, bidOrder.quantity);
                 std::cout << "[MATCHING ENGINE] MARKET SELL SWEEP: "
                     << tradeQty << " units @ price " << bestBidLevel.price << "\n";
+
+                recordTrade(bestBidLevel.price, tradeQty);
 
                 order.quantity -= tradeQty;
                 bidOrder.quantity -= tradeQty;
@@ -90,6 +100,8 @@ private:
             std::cout << "[MATCHING ENGINE] TRADE EXECUTED: "
                 << tradeQty << " units @ price " << bestAskLevel.price << "\n";
 
+            recordTrade(bestAskLevel.price, tradeQty);
+
             bidOrder.quantity -= tradeQty;
             askOrder.quantity -= tradeQty;
 
@@ -106,6 +118,22 @@ private:
             if (bestAskLevel.orders.empty()) {
                 asks.erase(asks.begin());
             }
+        }
+    }
+
+    void recordTrade(uint32_t price, uint32_t qty) {
+        auto now = std::chrono::high_resolution_clock::now();
+        uint64_t timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
+
+        tradeHistory.push_back(Trade{ timestamp, price, qty });
+
+        if (chartData.empty() || tradesInCurrentCandle >= 5) {
+            chartData.emplace_back(price, qty);
+            tradesInCurrentCandle = 1;
+        }
+        else {
+            chartData.back().update(price, qty);
+            tradesInCurrentCandle++;
         }
     }
 
@@ -176,4 +204,8 @@ public:
         }
         return snapshot;
     }
+
+    const std::vector<Trade>& getTradeHistory() const { return tradeHistory; }
+
+    const std::vector<Candle>& getChartData() const { return chartData; }
 };

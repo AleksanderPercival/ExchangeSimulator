@@ -5,6 +5,7 @@ module;
 #include <memory>
 #include <vector>
 #include <iostream>
+#include <functional>
 
 export module Exchange;
 
@@ -16,9 +17,19 @@ export class Exchange {
 private:
     std::unordered_map<std::string, std::unique_ptr<OrderBook>> orderBooks;
 
+    std::function<void(const std::string&, bool, uint32_t, uint32_t)> globalTradeCallback;
+
 public:
+    void setTradeCallback(std::function<void(const std::string&, bool, uint32_t, uint32_t)> cb) {
+        globalTradeCallback = std::move(cb);
+    }
+    
     void addAsset(const Asset& asset) {
-        orderBooks[asset.symbol] = std::make_unique<OrderBook>(asset);
+        auto ob = std::make_unique<OrderBook>(asset);
+        if (globalTradeCallback) {
+            ob->setTradeCallback(globalTradeCallback);
+        }
+        orderBooks[asset.symbol] = std::move(ob);
         std::cout << "[EXCHANGE] Listed new asset: " << asset.symbol << "\n";
     }
 

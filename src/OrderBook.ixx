@@ -5,6 +5,7 @@ module;
 #include <utility>
 #include <algorithm>
 #include <chrono>
+#include <functional>
 
 export module OrderBook;
 
@@ -41,6 +42,11 @@ private:
 
                 recordTrade(bestAskLevel.price, tradeQty);
 
+                if (onTradeExecuted) {
+                    onTradeExecuted(m_asset.symbol, true, bestAskLevel.price, tradeQty);
+                    onTradeExecuted(m_asset.symbol, false, bestAskLevel.price, tradeQty);
+                }
+
                 order.quantity -= tradeQty;
                 askOrder.quantity -= tradeQty;
 
@@ -65,6 +71,11 @@ private:
                     << tradeQty << " units @ price " << bestBidLevel.price << "\n";
 
                 recordTrade(bestBidLevel.price, tradeQty);
+
+                if (onTradeExecuted) {
+                    onTradeExecuted(m_asset.symbol, true, bestBidLevel.price, tradeQty);
+                    onTradeExecuted(m_asset.symbol, false, bestBidLevel.price, tradeQty);
+                }
 
                 order.quantity -= tradeQty;
                 bidOrder.quantity -= tradeQty;
@@ -101,6 +112,11 @@ private:
                 << tradeQty << " units @ price " << bestAskLevel.price << "\n";
 
             recordTrade(bestAskLevel.price, tradeQty);
+
+            if (onTradeExecuted) {
+                onTradeExecuted(m_asset.symbol, true, bestAskLevel.price, tradeQty);
+                onTradeExecuted(m_asset.symbol, false, bestAskLevel.price, tradeQty);
+            }
 
             bidOrder.quantity -= tradeQty;
             askOrder.quantity -= tradeQty;
@@ -208,4 +224,10 @@ public:
     const std::vector<Trade>& getTradeHistory() const { return tradeHistory; }
 
     const std::vector<Candle>& getChartData() const { return chartData; }
+
+    std::function<void(const std::string& symbol, bool isBuy, uint32_t price, uint32_t quantity)> onTradeExecuted;
+
+    void setTradeCallback(std::function<void(const std::string&, bool, uint32_t, uint32_t)> cb) {
+        onTradeExecuted = std::move(cb);
+    }
 };

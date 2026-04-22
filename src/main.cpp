@@ -13,6 +13,7 @@ import OrderBook;
 import RiskManager;
 import DataTerminal;
 import Exchange;
+import Portfolio;
 
 static void glfw_error_callback(int error, const char* description) {
     std::cerr << "[GLFW ERROR] " << error << ": " << description << '\n';
@@ -63,6 +64,16 @@ int main() {
     static int orderType = 0; // 0 = Limit, 1 = Market
     static float quantity = 10.0f;
     static float price = 150.0f;
+
+    Account myAccount(10000000);
+
+    exchange.setTradeCallback([&myAccount](const std::string& sym, bool isBuy, uint32_t price, uint32_t qty) {
+        myAccount.processTrade(sym, isBuy, price, qty);
+        });
+
+    exchange.addAsset({ "BTC/USD", 1, 100 });
+    exchange.addAsset({ "ETH/USD", 1, 10 });
+    exchange.addAsset({ "AAPL", 1, 1 });
 
     while (!glfwWindowShouldClose(window)) {
 
@@ -207,6 +218,30 @@ int main() {
         }
         else {
             ImGui::TextDisabled("Chart data feed disconnected.");
+        }
+        ImGui::End();
+
+        // 5. PORTFOLIO MANAGER
+        ImGui::Begin("My Portfolio & Ledger", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
+
+        ImGui::TextColored(ImVec4(0.4f, 1.0f, 0.4f, 1.0f), "Cash Balance: $%.2f", myAccount.getCashBalance() / 100.0f);
+
+        float pnl = myAccount.getRealizedPnL() / 100.0f;
+        ImVec4 pnlColor = pnl >= 0 ? ImVec4(0.2f, 1.0f, 0.2f, 1.0f) : ImVec4(1.0f, 0.2f, 0.2f, 1.0f);
+        ImGui::TextColored(pnlColor, "Realized PnL: $%.2f", pnl);
+
+        ImGui::Separator();
+        ImGui::Text("Open Positions:");
+        for (int i = 0; i < 3; ++i) {
+            uint32_t pos = myAccount.getTotalPosition(marketSymbols[i]);
+            if (pos > 0) {
+                ImGui::Text("%s: %d units", marketSymbols[i], pos);
+            }
+        }
+        if (myAccount.getTotalPosition("BTC/USD") == 0 &&
+            myAccount.getTotalPosition("ETH/USD") == 0 &&
+            myAccount.getTotalPosition("AAPL") == 0) {
+            ImGui::TextDisabled("No active positions.");
         }
         ImGui::End();
 
